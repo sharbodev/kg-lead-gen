@@ -1,0 +1,13 @@
+.env
+*.db
+data/
+__pycache__/
+*.pyc
+test_api.py
+test_db.py
+test_setup.py
+homepage.html
+homepage_modern.html
+homepage_cookie.html
+.vscode/
+.idea/

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KG Lead Gen — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">🇰🇬 KG LeadGen</div>
+            <span class="header-subtitle">Поиск клиентов в Кыргызстане</span>
+        </div>
+        <div class="header-right">
+            <div class="daily-counter">
+                <span class="daily-label">Сегодня написано:</span>
+                <span class="daily-value" id="todayCount">{{ today_count }}</span>
+                <span class="daily-sep">/</span>
+                <span class="daily-limit">{{ daily_limit }}</span>
+            </div>
+            <a href="/export" class="btn btn-outline">📥 Экспорт CSV</a>
+        </div>
+    </header>
+
+    <!-- Stats Cards -->
+    <section class="stats-grid">
+        <div class="stat-card stat-total">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statTotal">{{ stats.with_phone }}</div>
+                <div class="stat-label">Всего с телефоном</div>
+            </div>
+        </div>
+        <div class="stat-card stat-priority">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statNoSite">{{ stats.no_website }}</div>
+                <div class="stat-label">Без сайта (приоритет)</div>
+            </div>
+        </div>
+        <div class="stat-card stat-new">
+            <div class="stat-icon">🆕</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statNew">{{ stats.new }}</div>
+                <div class="stat-label">Новые</div>
+            </div>
+        </div>
+        <div class="stat-card stat-messaged">
+            <div class="stat-icon">💬</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statMessaged">{{ stats.messaged }}</div>
+                <div class="stat-label">Написано</div>
+            </div>
+        </div>
+        <div class="stat-card stat-replied">
+            <div class="stat-icon">💬</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statReplied">{{ stats.replied }}</div>
+                <div class="stat-label">Ответили</div>
+            </div>
+        </div>
+        <div class="stat-card stat-converted">
+            <div class="stat-icon">✅</div>
+            <div class="stat-info">
+                <div class="stat-value" id="statConverted">{{ stats.converted }}</div>
+                <div class="stat-label">Клиенты</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="filters-bar">
+        <div class="filter-group">
+            <input type="text" id="filterSearch" class="filter-input search-input" placeholder="🔍 Поиск по названию, адресу...">
+        </div>
+        <div class="filter-group">
+            <select id="filterCity" class="filter-select">
+                <option value="">Все города</option>
+                {% for city in stats.cities %}
+                <option value="{{ city }}">{{ city }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="filterCategory" class="filter-select">
+                <option value="">Все категории</option>
+                {% for cat in stats.categories %}
+                <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="filterStatus" class="filter-select">
+                <option value="">Все статусы</option>
+                <option value="new">🆕 Новые</option>
+                <option value="messaged">💬 Написано</option>
+                <option value="replied">↩️ Ответили</option>
+                <option value="converted">✅ Клиенты</option>
+                <option value="rejected">❌ Отказ</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="filterWebsite" class="filter-select">
+                <option value="">Сайт: все</option>
+                <option value="0">🎯 Без сайта</option>
+                <option value="1">🌐 С сайтом</option>
+            </select>
+        </div>
+    </section>
+
+    <!-- Table -->
+    <section class="table-section">
+        <div class="table-header">
+            <span class="results-count">Найдено: <strong id="totalResults">0</strong></span>
+            <div class="pagination" id="pagination"></div>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="leads-table">
+                <thead>
+                    <tr>
+                        <th class="th-name">Бизнес</th>
+                        <th class="th-phone">Телефон</th>
+                        <th class="th-city">Город</th>
+                        <th class="th-category">Категория</th>
+                        <th class="th-rating">Рейтинг</th>
+                        <th class="th-site">Сайт</th>
+                        <th class="th-status">Статус</th>
+                        <th class="th-actions">Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="8" class="empty-state">Загрузка...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Message Modal -->
+    <div class="modal-overlay" id="messageModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Сообщение</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-business-info" id="modalBusinessInfo"></div>
+                <div class="modal-loader" id="modalLoader">
+                    <div class="spinner"></div>
+                    <p>Gemini генерирует сообщение...</p>
+                </div>
+                <div class="modal-content" id="modalContent" style="display:none">
+                    <label class="modal-label">Текст сообщения:</label>
+                    <div class="message-preview" id="messagePreview"></div>
+                    <div class="modal-actions">
+                        <a href="#" id="waLink" class="btn btn-whatsapp" target="_blank" onclick="markAsSent()">
+                            📱 Открыть WhatsApp
+                        </a>
+                        <button class="btn btn-outline" onclick="regenerateMessage()">🔄 Другой вариант</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== State =====
+        let currentPage = 1;
+        let currentBusinessId = null;
+        let searchTimeout = null;
+
+        // ===== Load Data =====
+        async function loadBusinesses(page = 1) {
+            currentPage = page;
+            const params = new URLSearchParams();
+
+            const city = document.getElementById('filterCity').value;
+            const category = document.getElementById('filterCategory').value;
+            const status = document.getElementById('filterStatus').value;
+            const website = document.getElementById('filterWebsite').value;
+            const search = document.getElementById('filterSearch').value;
+
+            if (city) params.set('city', city);
+            if (category) params.set('category', category);
+            if (status) params.set('status', status);
+            if (website) params.set('has_website', website);
+            if (search) params.set('search', search);
+            params.set('page', page);
+
+            try {
+                const resp = await fetch(`/api/businesses?${params}`);
+                const data = await resp.json();
+                renderTable(data.businesses);
+                renderPagination(data.page, data.pages, data.total);
+                document.getElementById('totalResults').textContent = data.total;
+            } catch (e) {
+                console.error('Error loading businesses:', e);
+            }
+        }
+
+        // ===== Render Table =====
+        function renderTable(businesses) {
+            const tbody = document.getElementById('tableBody');
+
+            if (!businesses.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Нет данных. Запусти <code>python scraper.py</code></td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = businesses.map(b => {
+                const phone = b.international_phone || b.phone || '—';
+                const rating = b.rating ? `⭐ ${b.rating}` : '—';
+                const site = b.has_website
+                    ? `<span class="badge badge-site">🌐 Есть</span>`
+                    : `<span class="badge badge-nosite">❌ Нет</span>`;
+                const statusBadge = getStatusBadge(b.status);
+
+                return `<tr class="${b.has_website ? '' : 'row-priority'}">
+                    <td class="td-name">
+                        <div class="business-name">${escapeHtml(b.name)}</div>
+                        <div class="business-address">${escapeHtml(b.address || '')}</div>
+                    </td>
+                    <td class="td-phone"><code>${escapeHtml(phone)}</code></td>
+                    <td>${escapeHtml(b.city || '')}</td>
+                    <td><span class="badge badge-category">${escapeHtml(b.category || '')}</span></td>
+                    <td>${rating}</td>
+                    <td>${site}</td>
+                    <td>
+                        <select class="status-select status-${b.status}" onchange="updateStatus(${b.id}, this.value)" data-id="${b.id}">
+                            <option value="new" ${b.status === 'new' ? 'selected' : ''}>🆕 Новый</option>
+                            <option value="messaged" ${b.status === 'messaged' ? 'selected' : ''}>💬 Написано</option>
+                            <option value="replied" ${b.status === 'replied' ? 'selected' : ''}>↩️ Ответил</option>
+                            <option value="converted" ${b.status === 'converted' ? 'selected' : ''}>✅ Клиент</option>
+                            <option value="rejected" ${b.status === 'rejected' ? 'selected' : ''}>❌ Отказ</option>
+                        </select>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-whatsapp" onclick="openMessageModal(${b.id}, '${escapeHtml(b.name)}')">
+                            📱 WhatsApp
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function getStatusBadge(status) {
+            const map = {
+                'new': '🆕 Новый',
+                'messaged': '💬 Написано',
+                'replied': '↩️ Ответил',
+                'converted': '✅ Клиент',
+                'rejected': '❌ Отказ',
+            };
+            return map[status] || status;
+        }
+
+        // ===== Pagination =====
+        function renderPagination(page, totalPages, total) {
+            const container = document.getElementById('pagination');
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            if (page > 1) {
+                html += `<button class="btn btn-sm btn-outline" onclick="loadBusinesses(${page - 1})">← Назад</button>`;
+            }
+            html += `<span class="page-info">Стр. ${page} из ${totalPages}</span>`;
+            if (page < totalPages) {
+                html += `<button class="btn btn-sm btn-outline" onclick="loadBusinesses(${page + 1})">Вперёд →</button>`;
+            }
+            container.innerHTML = html;
+        }
+
+        // ===== Message Modal =====
+        async function openMessageModal(businessId, businessName) {
+            currentBusinessId = businessId;
+            document.getElementById('modalTitle').textContent = businessName;
+            document.getElementById('modalBusinessInfo').textContent = '';
+            document.getElementById('modalLoader').style.display = 'flex';
+            document.getElementById('modalContent').style.display = 'none';
+            document.getElementById('messageModal').classList.add('active');
+
+            try {
+                const resp = await fetch(`/api/generate-message/${businessId}`, { method: 'POST' });
+                const data = await resp.json();
+
+                if (data.success) {
+                    document.getElementById('messagePreview').textContent = data.message;
+                    document.getElementById('waLink').href = data.wa_link;
+                    if (data.cached) {
+                        document.getElementById('modalBusinessInfo').innerHTML =
+                            '<span class="badge badge-cached">📋 Из кэша</span>';
+                    }
+                    document.getElementById('modalLoader').style.display = 'none';
+                    document.getElementById('modalContent').style.display = 'block';
+                } else {
+                    document.getElementById('modalLoader').innerHTML =
+                        `<p class="error">❌ ${data.error}</p>`;
+                }
+            } catch (e) {
+                document.getElementById('modalLoader').innerHTML =
+                    `<p class="error">❌ Ошибка сети</p>`;
+            }
+        }
+
+        async function regenerateMessage() {
+            if (!currentBusinessId) return;
+            document.getElementById('modalLoader').style.display = 'flex';
+            document.getElementById('modalContent').style.display = 'none';
+            document.getElementById('modalBusinessInfo').textContent = '';
+
+            try {
+                const resp = await fetch(`/api/generate-message/${currentBusinessId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ force: true }),
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    document.getElementById('messagePreview').textContent = data.message;
+                    document.getElementById('waLink').href = data.wa_link;
+                    document.getElementById('modalLoader').style.display = 'none';
+                    document.getElementById('modalContent').style.display = 'block';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function markAsSent() {
+            if (currentBusinessId) {
+                updateStatus(currentBusinessId, 'messaged');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('messageModal').classList.remove('active');
+            currentBusinessId = null;
+        }
+
+        // ===== Status Update =====
+        async function updateStatus(businessId, status) {
+            try {
+                await fetch(`/api/update-status/${businessId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status }),
+                });
+                refreshStats();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // ===== Stats Refresh =====
+        async function refreshStats() {
+            try {
+                const resp = await fetch('/api/stats');
+                const s = await resp.json();
+                document.getElementById('statTotal').textContent = s.with_phone;
+                document.getElementById('statNoSite').textContent = s.no_website;
+                document.getElementById('statNew').textContent = s.new;
+                document.getElementById('statMessaged').textContent = s.messaged;
+                document.getElementById('statReplied').textContent = s.replied;
+                document.getElementById('statConverted').textContent = s.converted;
+                document.getElementById('todayCount').textContent = s.today_messaged;
+            } catch (e) {}
+        }
+
+        // ===== Helpers =====
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ===== Event Listeners =====
+        document.getElementById('filterCity').addEventListener('change', () => loadBusinesses(1));
+        document.getElementById('filterCategory').addEventListener('change', () => loadBusinesses(1));
+        document.getElementById('filterStatus').addEventListener('change', () => loadBusinesses(1));
+        document.getElementById('filterWebsite').addEventListener('change', () => loadBusinesses(1));
+
+        document.getElementById('filterSearch').addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => loadBusinesses(1), 400);
+        });
+
+        // Close modal on overlay click
+        document.getElementById('messageModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeModal();
+        });
+
+        // Close modal on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // ===== Init =====
+        loadBusinesses(1);
+    </script>
+</body>
+</html>

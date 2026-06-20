@@ -110,6 +110,14 @@
                 <option value="1">🌐 С сайтом</option>
             </select>
         </div>
+        <div class="filter-group">
+            <select id="filterReviews" class="filter-select">
+                <option value="">Отзывы: все</option>
+                <option value="5">⭐ ≥ 5 отзывов</option>
+                <option value="10">⭐ ≥ 10 отзывов</option>
+                <option value="20">⭐ ≥ 20 отзывов</option>
+            </select>
+        </div>
     </section>
 
     <!-- Table -->
@@ -158,11 +166,12 @@
                 <div class="modal-content" id="modalContent" style="display:none">
                     <label class="modal-label">Текст сообщения:</label>
                     <div class="message-preview" id="messagePreview"></div>
-                    <div class="modal-actions">
+                    <div class="modal-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <a href="#" id="waLink" class="btn btn-whatsapp" target="_blank" onclick="markAsSent()">
                             📱 Открыть WhatsApp
                         </a>
                         <button class="btn btn-outline" onclick="regenerateMessage()">🔄 Другой вариант</button>
+                        <button class="btn btn-outline" onclick="markAsNoWhatsApp()" style="border-color: #ef4444; color: #ef4444; background: transparent;">❌ Нет WhatsApp</button>
                     </div>
                 </div>
             </div>
@@ -184,12 +193,14 @@
             const category = document.getElementById('filterCategory').value;
             const status = document.getElementById('filterStatus').value;
             const website = document.getElementById('filterWebsite').value;
+            const reviews = document.getElementById('filterReviews').value;
             const search = document.getElementById('filterSearch').value;
 
             if (city) params.set('city', city);
             if (category) params.set('category', category);
             if (status) params.set('status', status);
             if (website) params.set('has_website', website);
+            if (reviews) params.set('min_reviews', reviews);
             if (search) params.set('search', search);
             params.set('page', page);
 
@@ -215,7 +226,7 @@
 
             tbody.innerHTML = businesses.map(b => {
                 const phone = b.international_phone || b.phone || '—';
-                const rating = b.rating ? `⭐ ${b.rating}` : '—';
+                const rating = b.rating ? `⭐ ${b.rating} (${b.reviews_count || 0})` : '—';
                 const site = b.has_website
                     ? `<span class="badge badge-site">🌐 Есть</span>`
                     : `<span class="badge badge-nosite">❌ Нет</span>`;
@@ -339,6 +350,15 @@
         function markAsSent() {
             if (currentBusinessId) {
                 updateStatus(currentBusinessId, 'messaged');
+                setTimeout(() => loadBusinesses(currentPage), 500);
+            }
+        }
+
+        async function markAsNoWhatsApp() {
+            if (currentBusinessId) {
+                await updateStatus(currentBusinessId, 'rejected');
+                closeModal();
+                loadBusinesses(currentPage);
             }
         }
 
@@ -389,6 +409,7 @@
         document.getElementById('filterCategory').addEventListener('change', () => loadBusinesses(1));
         document.getElementById('filterStatus').addEventListener('change', () => loadBusinesses(1));
         document.getElementById('filterWebsite').addEventListener('change', () => loadBusinesses(1));
+        document.getElementById('filterReviews').addEventListener('change', () => loadBusinesses(1));
 
         document.getElementById('filterSearch').addEventListener('input', () => {
             clearTimeout(searchTimeout);

@@ -31,7 +31,7 @@ class TwoGisScraper:
     # API calls
     # ──────────────────────────────────────
 
-    def search_businesses(self, query, page=1, page_size=10):
+    def search_businesses(self, query, page=1, page_size=10, locale="ru_KG"):
         """Search for businesses in 2GIS Catalog API."""
         url = f"{self.base_url}/items"
         params = {
@@ -41,7 +41,7 @@ class TwoGisScraper:
             "page": page,
             "page_size": page_size,
             "fields": "items.contact_groups,items.reviews,items.external_content,items.org",
-            "locale": "ru_KG",
+            "locale": locale,
         }
 
         try:
@@ -172,13 +172,21 @@ class TwoGisScraper:
         query = f"{category} {city}"
         print(f"  🔍 «{category}» в {city}...", end=" ", flush=True)
 
+        # Determine locale based on city
+        locale = "ru_KG"
+        city_lower = city.lower()
+        if city_lower in ["ташкент"]:
+            locale = "ru_UZ"
+        elif city_lower in ["алматы", "астана", "алма-ата", "караганда", "шымкент", "актобе"]:
+            locale = "ru_KZ"
+
         total_found = 0
         total_saved = 0
         page = 1
         max_pages = 5  # Safety limit (250 results per query)
 
         while page <= max_pages:
-            result = self.search_businesses(query, page=page)
+            result = self.search_businesses(query, page=page, locale=locale)
 
             if not result or "result" not in result:
                 break

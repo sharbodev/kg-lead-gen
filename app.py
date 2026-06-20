@@ -42,6 +42,7 @@ def api_businesses():
     status = request.args.get("status", "")
     has_website = request.args.get("has_website", "")
     search = request.args.get("search", "")
+    min_reviews = request.args.get("min_reviews", "")
     page = int(request.args.get("page", 1))
 
     has_ws = None
@@ -50,12 +51,20 @@ def api_businesses():
     elif has_website == "1":
         has_ws = True
 
+    min_revs = None
+    if min_reviews:
+        try:
+            min_revs = int(min_reviews)
+        except ValueError:
+            pass
+
     businesses = db.get_businesses(
         city=city or None,
         category=category or None,
         status=status or None,
         has_website=has_ws,
         search=search or None,
+        min_reviews=min_revs,
         page=page,
     )
 
@@ -65,6 +74,7 @@ def api_businesses():
         status=status or None,
         has_website=has_ws,
         search=search or None,
+        min_reviews=min_revs,
     )
 
     return jsonify({

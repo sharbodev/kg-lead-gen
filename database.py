@@ -111,7 +111,7 @@ class Database:
         return dict(row) if row else None
 
     def get_businesses(self, city=None, category=None, status=None,
-                       has_website=None, search=None, page=1, per_page=50):
+                       has_website=None, search=None, min_reviews=None, page=1, per_page=50):
         """Get businesses with optional filters and pagination."""
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -131,6 +131,9 @@ class Database:
         if has_website is not None:
             query += " AND has_website = ?"
             params.append(1 if has_website else 0)
+        if min_reviews is not None:
+            query += " AND reviews_count >= ?"
+            params.append(min_reviews)
         if search:
             query += " AND (name LIKE ? OR address LIKE ? OR phone LIKE ?)"
             s = f"%{search}%"
@@ -147,7 +150,7 @@ class Database:
         return [dict(row) for row in rows]
 
     def get_total_count(self, city=None, category=None, status=None,
-                        has_website=None, search=None):
+                        has_website=None, search=None, min_reviews=None):
         """Get total count with the same filters."""
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -167,6 +170,9 @@ class Database:
         if has_website is not None:
             query += " AND has_website = ?"
             params.append(1 if has_website else 0)
+        if min_reviews is not None:
+            query += " AND reviews_count >= ?"
+            params.append(min_reviews)
         if search:
             query += " AND (name LIKE ? OR address LIKE ? OR phone LIKE ?)"
             s = f"%{search}%"
